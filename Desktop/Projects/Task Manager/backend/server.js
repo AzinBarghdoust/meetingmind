@@ -29,7 +29,8 @@ const upload = multer({
 });
 
 // ── Database ──────────────────────────────────────────────────────────────────
-const db = new Database(path.join(__dirname, 'meetingmind.db'));
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'meetingmind.db');
+const db = new Database(DB_PATH);
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
