@@ -2,10 +2,144 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 
 const STEP_LABELS = ['Setup', 'Record', 'Processing', 'Review & Send'];
 
+const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'fr', label: 'French' },
+  { code: 'de', label: 'German' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'it', label: 'Italian' },
+  { code: 'pt', label: 'Portuguese' },
+  { code: 'ar', label: 'Arabic' },
+  { code: 'fa', label: 'Persian (Farsi)' },
+  { code: 'zh', label: 'Chinese' },
+  { code: 'ja', label: 'Japanese' },
+  { code: 'ko', label: 'Korean' },
+  { code: 'ru', label: 'Russian' },
+  { code: 'tr', label: 'Turkish' },
+  { code: 'hi', label: 'Hindi' },
+  { code: 'nl', label: 'Dutch' },
+];
+
 function formatTime(secs) {
   const m = String(Math.floor(secs / 60)).padStart(2, '0');
   const s = String(secs % 60).padStart(2, '0');
   return `${m}:${s}`;
+}
+
+// ─── Auth Screen ──────────────────────────────────────────────────────────────
+function AuthScreen({ onAuth }) {
+  const [mode, setMode] = useState('login');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const switchMode = (m) => { setMode(m); setError(''); };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+      const body = mode === 'login' ? { email, password } : { name, email, password };
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Authentication failed');
+      onAuth(data.token, data.user);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-screen">
+      <div className="auth-card">
+        <div className="auth-logo">
+          <span className="auth-logo-emoji">📋</span>
+          <span className="auth-logo-name">MeetingMind</span>
+        </div>
+
+        <div className="auth-header">
+          <h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
+          <p>{mode === 'login' ? 'Sign in to continue' : 'Start recording smarter meetings'}</p>
+        </div>
+
+        <div className="auth-tabs">
+          <button className={`auth-tab ${mode === 'login' ? 'active' : ''}`} onClick={() => switchMode('login')}>Sign in</button>
+          <button className={`auth-tab ${mode === 'signup' ? 'active' : ''}`} onClick={() => switchMode('signup')}>Sign up</button>
+        </div>
+
+        <form onSubmit={submit} className="auth-form">
+          {mode === 'signup' && (
+            <div className="form-group">
+              <label>Full name</label>
+              <input
+                className="input"
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Jane Smith"
+                autoFocus
+                required
+              />
+            </div>
+          )}
+
+          <div className="form-group">
+            <label>Email address</label>
+            <input
+              className="input"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoFocus={mode === 'login'}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Password {mode === 'signup' && <span className="label-hint">min. 6 characters</span>}</label>
+            <div className="password-wrap">
+              <input
+                className="input"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(v => !v)}
+                tabIndex={-1}
+              >
+                {showPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
+          </div>
+
+          {error && <div className="banner banner-error">{error}</div>}
+
+          <button className="btn-primary btn-full" type="submit" disabled={loading}>
+            {loading
+              ? 'Please wait…'
+              : mode === 'login' ? 'Sign in' : 'Create account'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 // ─── Step Indicator ──────────────────────────────────────────────────────────
@@ -30,7 +164,7 @@ function StepIndicator({ current }) {
 }
 
 // ─── Step 1 – Meeting Setup ──────────────────────────────────────────────────
-function SetupStep({ meetingTitle, setMeetingTitle, meetingDate, setMeetingDate, attendees, setAttendees, onNext }) {
+function SetupStep({ meetingTitle, setMeetingTitle, meetingDate, setMeetingDate, language, setLanguage, attendees, setAttendees, onNext }) {
   const update = (i, field, val) =>
     setAttendees(prev => prev.map((a, idx) => idx === i ? { ...a, [field]: val } : a));
 
@@ -64,6 +198,15 @@ function SetupStep({ meetingTitle, setMeetingTitle, meetingDate, setMeetingDate,
             value={meetingDate}
             onChange={e => setMeetingDate(e.target.value)}
           />
+        </div>
+
+        <div className="form-group">
+          <label>Recording language</label>
+          <select className="input" value={language} onChange={e => setLanguage(e.target.value)}>
+            {LANGUAGES.map(l => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
         </div>
 
         <div className="form-group">
@@ -162,7 +305,6 @@ function RecordStep({ meetingTitle, meetingDate, onComplete, onBack }) {
       const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
         .find(t => MediaRecorder.isTypeSupported(t)) || '';
 
-      // 32 kbps keeps speech quality while fitting ~2 hrs under Whisper's 25 MB limit
       const recorder = new MediaRecorder(stream, {
         ...(mimeType ? { mimeType } : {}),
         audioBitsPerSecond: 32000,
@@ -196,11 +338,15 @@ function RecordStep({ meetingTitle, meetingDate, onComplete, onBack }) {
     setBars(Array(28).fill(4));
   };
 
-  const reset = () => {
-    setAudioBlob(null);
-    setAudioUrl(null);
-    setElapsed(0);
-  };
+  const reset = () => { setAudioBlob(null); setAudioUrl(null); setElapsed(0); };
+
+  // Auto-stop at 90 minutes
+  useEffect(() => {
+    if (isRecording && elapsed >= 90 * 60) stopRecording();
+  }, [elapsed, isRecording]);
+
+  const MAX_SECS = 90 * 60;
+  const nearLimit = isRecording && elapsed >= MAX_SECS - 5 * 60; // warn at 85 min
 
   return (
     <div className="step-content">
@@ -210,15 +356,16 @@ function RecordStep({ meetingTitle, meetingDate, onComplete, onBack }) {
       </div>
 
       {micError && <div className="banner banner-error">{micError}</div>}
+      {nearLimit && (
+        <div className="banner banner-warning">
+          ⚠️ Approaching 90-minute limit — recording will auto-stop at {formatTime(MAX_SECS)}.
+        </div>
+      )}
 
       <div className="card recorder-card">
         <div className="waveform" aria-hidden>
           {bars.map((h, i) => (
-            <div
-              key={i}
-              className={`wave-bar ${isRecording ? 'live' : ''}`}
-              style={{ height: h }}
-            />
+            <div key={i} className={`wave-bar ${isRecording ? 'live' : ''}`} style={{ height: h }} />
           ))}
         </div>
 
@@ -263,7 +410,7 @@ function RecordStep({ meetingTitle, meetingDate, onComplete, onBack }) {
 }
 
 // ─── Step 3 – Processing ──────────────────────────────────────────────────────
-function ProcessingStep({ audioBlob, meetingTitle, meetingDate, attendees, onComplete, onBack }) {
+function ProcessingStep({ audioBlob, meetingTitle, meetingDate, attendees, language, token, onComplete, onBack }) {
   const INITIAL_STEPS = [
     { id: 'upload', label: 'Uploading audio file' },
     { id: 'transcribe', label: 'Transcribing speech to text' },
@@ -288,10 +435,15 @@ function ProcessingStep({ audioBlob, meetingTitle, meetingDate, attendees, onCom
       const form = new FormData();
       form.append('audio', audioBlob, 'recording.webm');
       form.append('mimeType', audioBlob.type);
+      form.append('language_code', language || 'en');
 
-      const tRes = await fetch('/api/transcribe', { method: 'POST', body: form });
+      const tRes = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: form,
+      });
       if (!tRes.ok) throw new Error((await tRes.json()).error || 'Transcription failed');
-      const { transcript } = await tRes.json();
+      const { transcript, language_code } = await tRes.json();
       setStatus('upload', 'done');
 
       setStatus('transcribe', 'active');
@@ -301,8 +453,11 @@ function ProcessingStep({ audioBlob, meetingTitle, meetingDate, attendees, onCom
       setStatus('generate', 'active');
       const mRes = await fetch('/api/generate-mom', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript, meetingTitle, date: meetingDate, attendees }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ transcript, meetingTitle, date: meetingDate, attendees, language_code }),
       });
       if (!mRes.ok) throw new Error((await mRes.json()).error || 'MOM generation failed');
       const { mom, tasks } = await mRes.json();
@@ -317,7 +472,7 @@ function ProcessingStep({ audioBlob, meetingTitle, meetingDate, attendees, onCom
         return updated;
       });
     }
-  }, [audioBlob, meetingTitle, meetingDate, attendees, onComplete]);
+  }, [audioBlob, meetingTitle, meetingDate, attendees, language, token, onComplete]);
 
   useEffect(() => {
     if (!hasRun.current) { hasRun.current = true; run(); }
@@ -325,9 +480,9 @@ function ProcessingStep({ audioBlob, meetingTitle, meetingDate, attendees, onCom
 
   const icon = (id) => {
     const st = stepStates[id];
-    if (st === 'done') return <span className="p-icon done">✓</span>;
+    if (st === 'done')   return <span className="p-icon done">✓</span>;
     if (st === 'active') return <span className="p-icon active"><span className="spinner" /></span>;
-    if (st === 'error') return <span className="p-icon err">✕</span>;
+    if (st === 'error')  return <span className="p-icon err">✕</span>;
     return <span className="p-icon">&nbsp;</span>;
   };
 
@@ -361,7 +516,7 @@ function ProcessingStep({ audioBlob, meetingTitle, meetingDate, attendees, onCom
 }
 
 // ─── Step 4 – Review & Send ───────────────────────────────────────────────────
-function ReviewStep({ transcript, mom: initMom, tasks: initTasks, attendees, meetingTitle, meetingDate }) {
+function ReviewStep({ transcript, mom: initMom, tasks: initTasks, attendees, meetingTitle, meetingDate, token, onEmailSent }) {
   const [tab, setTab] = useState('mom');
   const [mom, setMom] = useState(initMom);
   const [tasks, setTasks] = useState(initTasks);
@@ -378,7 +533,8 @@ function ReviewStep({ transcript, mom: initMom, tasks: initTasks, attendees, mee
     const d = [...prev.decisions]; d[i] = val;
     return { ...prev, decisions: d };
   });
-  const updateTask = (i, field, val) => setTasks(prev => prev.map((t, idx) => idx === i ? { ...t, [field]: val } : t));
+  const updateTask = (i, field, val) =>
+    setTasks(prev => prev.map((t, idx) => idx === i ? { ...t, [field]: val } : t));
 
   const sendEmail = async () => {
     setEmailSending(true);
@@ -386,11 +542,15 @@ function ReviewStep({ transcript, mom: initMom, tasks: initTasks, attendees, mee
     try {
       const res = await fetch('/api/send-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ attendees, meetingTitle, date: meetingDate, mom, tasks, transcript }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to send email');
       setEmailSent(true);
+      onEmailSent?.();
     } catch (err) {
       setEmailError(err.message);
     } finally {
@@ -399,7 +559,6 @@ function ReviewStep({ transcript, mom: initMom, tasks: initTasks, attendees, mee
   };
 
   const PRIORITY_CLASS = { High: 'badge-high', Medium: 'badge-medium', Low: 'badge-low' };
-
   const recipients = attendees.filter(a => a.email?.includes('@'));
 
   return (
@@ -415,76 +574,49 @@ function ReviewStep({ transcript, mom: initMom, tasks: initTasks, attendees, mee
           { id: 'tasks', label: `✅ Tasks (${tasks.length})` },
           { id: 'transcript', label: '📝 Transcript' },
         ].map(t => (
-          <button
-            key={t.id}
-            className={`tab ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >
+          <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
         ))}
       </div>
 
-      {/* ── MOM tab ── */}
       {tab === 'mom' && (
         <div className="card tab-card">
           <div className="mom-section">
             <div className="section-title">Summary</div>
-            <textarea
-              className="editable-area"
-              rows={3}
-              value={mom.summary}
-              onChange={e => updateMom('summary', e.target.value)}
-            />
+            <textarea className="editable-area" rows={3} value={mom.summary} onChange={e => updateMom('summary', e.target.value)} />
           </div>
-
           {mom.discussion_points?.length > 0 && (
             <div className="mom-section">
               <div className="section-title">Discussion Points</div>
               {mom.discussion_points.map((pt, i) => (
                 <div key={i} className="list-row">
                   <span className="bullet">•</span>
-                  <input
-                    className="editable-line"
-                    value={pt}
-                    onChange={e => updateDiscussion(i, e.target.value)}
-                  />
+                  <input className="editable-line" value={pt} onChange={e => updateDiscussion(i, e.target.value)} />
                 </div>
               ))}
             </div>
           )}
-
           {mom.decisions?.length > 0 && (
             <div className="mom-section">
               <div className="section-title">Decisions Made</div>
               {mom.decisions.map((d, i) => (
                 <div key={i} className="list-row">
                   <span className="bullet check">✓</span>
-                  <input
-                    className="editable-line"
-                    value={d}
-                    onChange={e => updateDecision(i, e.target.value)}
-                  />
+                  <input className="editable-line" value={d} onChange={e => updateDecision(i, e.target.value)} />
                 </div>
               ))}
             </div>
           )}
-
           {mom.next_steps && (
             <div className="mom-section">
               <div className="section-title">Next Steps</div>
-              <textarea
-                className="editable-area"
-                rows={2}
-                value={mom.next_steps}
-                onChange={e => updateMom('next_steps', e.target.value)}
-              />
+              <textarea className="editable-area" rows={2} value={mom.next_steps} onChange={e => updateMom('next_steps', e.target.value)} />
             </div>
           )}
         </div>
       )}
 
-      {/* ── Tasks tab ── */}
       {tab === 'tasks' && (
         <div className="card tab-card">
           {tasks.length === 0 ? (
@@ -494,19 +626,15 @@ function ReviewStep({ transcript, mom: initMom, tasks: initTasks, attendees, mee
               {tasks.map((task, i) => (
                 <div key={i} className="task-item">
                   <div className="task-top">
-                    <input
-                      className="task-title-input"
-                      value={task.title}
-                      onChange={e => updateTask(i, 'title', e.target.value)}
-                    />
-                    <span className={`priority-badge ${PRIORITY_CLASS[task.priority] || 'badge-medium'}`}>
-                      {task.priority}
-                    </span>
+                    <input className="task-title-input" value={task.title} onChange={e => updateTask(i, 'title', e.target.value)} />
+                    {task.priority
+                      ? <span className={`priority-badge ${PRIORITY_CLASS[task.priority] || 'badge-medium'}`}>{task.priority}</span>
+                      : null}
                   </div>
                   <p className="task-desc">{task.description}</p>
                   <div className="task-meta">
-                    <span>👤 {task.owner}</span>
-                    <span>📅 {task.deadline}</span>
+                    <span>👤 {task.owner || <span className="meta-unset">No owner set</span>}</span>
+                    <span>📅 {task.deadline || <span className="meta-unset">No deadline set</span>}</span>
                   </div>
                 </div>
               ))}
@@ -515,38 +643,28 @@ function ReviewStep({ transcript, mom: initMom, tasks: initTasks, attendees, mee
         </div>
       )}
 
-      {/* ── Transcript tab ── */}
       {tab === 'transcript' && (
         <div className="card tab-card">
           <pre className="transcript-body">{transcript}</pre>
         </div>
       )}
 
-      {/* ── Email panel ── */}
       <div className="email-panel">
         <div className="email-recipients">
           <span className="recipients-label">Recipients:</span>
           {recipients.length ? (
-            recipients.map((a, i) => (
-              <span key={i} className="chip">{a.name || a.email}</span>
-            ))
+            recipients.map((a, i) => <span key={i} className="chip">{a.name || a.email}</span>)
           ) : (
-            <span className="no-recipients">No email addresses set — go back to Setup to add them</span>
+            <span className="no-recipients">No email addresses set</span>
           )}
         </div>
-
         {emailError && <div className="banner banner-error" style={{ marginBottom: 14 }}>{emailError}</div>}
-
         {emailSent ? (
           <div className="banner banner-success">
             ✓ Minutes emailed successfully to {recipients.length} attendee{recipients.length !== 1 ? 's' : ''}!
           </div>
         ) : (
-          <button
-            className="btn-primary btn-full"
-            onClick={sendEmail}
-            disabled={emailSending || !recipients.length}
-          >
+          <button className="btn-primary btn-full" onClick={sendEmail} disabled={emailSending || !recipients.length}>
             {emailSending ? 'Sending…' : '📧 Send MOM to attendees'}
           </button>
         )}
@@ -557,14 +675,49 @@ function ReviewStep({ transcript, mom: initMom, tasks: initTasks, attendees, mee
 
 // ─── App Shell ────────────────────────────────────────────────────────────────
 export default function App() {
-  const [step, setStep] = useState(0);
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('mm_user') || 'null'); } catch { return null; }
+  });
+  const [token, setToken] = useState(() => localStorage.getItem('mm_token') || '');
 
+  const [step, setStep] = useState(0);
   const [meetingTitle, setMeetingTitle] = useState('');
   const [meetingDate, setMeetingDate] = useState(new Date().toISOString().slice(0, 10));
+  const [language, setLanguage] = useState('en');
   const [attendees, setAttendees] = useState([{ name: '', email: '' }]);
-
   const [audioBlob, setAudioBlob] = useState(null);
   const [results, setResults] = useState(null);
+
+  const [usage, setUsage] = useState({ used: 0, limit: 3, remaining: 3 });
+
+  const fetchUsage = useCallback(async (t) => {
+    try {
+      const res = await fetch('/api/usage', { headers: { Authorization: `Bearer ${t}` } });
+      if (res.ok) setUsage(await res.json());
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { if (token) fetchUsage(token); }, [token, fetchUsage]);
+
+  const handleAuth = (newToken, newUser) => {
+    localStorage.setItem('mm_token', newToken);
+    localStorage.setItem('mm_user', JSON.stringify(newUser));
+    setToken(newToken);
+    setUser(newUser);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('mm_token');
+    localStorage.removeItem('mm_user');
+    setToken('');
+    setUser(null);
+    setStep(0);
+    setResults(null);
+  };
+
+  if (!user || !token) {
+    return <AuthScreen onAuth={handleAuth} />;
+  }
 
   return (
     <div className="app">
@@ -574,49 +727,47 @@ export default function App() {
           <span className="logo-name">MeetingMind</span>
         </div>
         <StepIndicator current={step} />
+        <div className="header-user">
+          <span className={`usage-badge ${usage.remaining === 0 ? 'usage-empty' : usage.remaining === 1 ? 'usage-low' : ''}`}>
+            {usage.remaining === 0 ? '⚠️ No MOMs left' : `${usage.remaining} / ${usage.limit} MOMs left`}
+          </span>
+          <span className="user-name">👤 {user.name}</span>
+          <button className="btn-logout" onClick={handleLogout}>Sign out</button>
+        </div>
       </header>
 
       <main className="app-main">
         {step === 0 && (
           <SetupStep
-            meetingTitle={meetingTitle}
-            setMeetingTitle={setMeetingTitle}
-            meetingDate={meetingDate}
-            setMeetingDate={setMeetingDate}
-            attendees={attendees}
-            setAttendees={setAttendees}
+            meetingTitle={meetingTitle} setMeetingTitle={setMeetingTitle}
+            meetingDate={meetingDate} setMeetingDate={setMeetingDate}
+            language={language} setLanguage={setLanguage}
+            attendees={attendees} setAttendees={setAttendees}
             onNext={() => setStep(1)}
           />
         )}
-
         {step === 1 && (
           <RecordStep
-            meetingTitle={meetingTitle}
-            meetingDate={meetingDate}
+            meetingTitle={meetingTitle} meetingDate={meetingDate}
             onComplete={blob => { setAudioBlob(blob); setStep(2); }}
             onBack={() => setStep(0)}
           />
         )}
-
         {step === 2 && (
           <ProcessingStep
-            audioBlob={audioBlob}
-            meetingTitle={meetingTitle}
-            meetingDate={meetingDate}
-            attendees={attendees}
+            audioBlob={audioBlob} meetingTitle={meetingTitle}
+            meetingDate={meetingDate} attendees={attendees}
+            language={language} token={token}
             onComplete={data => { setResults(data); setStep(3); }}
             onBack={() => setStep(1)}
           />
         )}
-
         {step === 3 && results && (
           <ReviewStep
-            transcript={results.transcript}
-            mom={results.mom}
-            tasks={results.tasks}
-            attendees={attendees}
-            meetingTitle={meetingTitle}
-            meetingDate={meetingDate}
+            transcript={results.transcript} mom={results.mom} tasks={results.tasks}
+            attendees={attendees} meetingTitle={meetingTitle}
+            meetingDate={meetingDate} token={token}
+            onEmailSent={() => fetchUsage(token)}
           />
         )}
       </main>
