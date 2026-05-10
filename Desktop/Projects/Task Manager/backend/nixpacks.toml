@@ -1,7 +1,7 @@
+providers = ["node"]
+
 [variables]
 NODE_VERSION = "20"
-
-providers = ["node"]
 
 [phases.install]
 cmds = ["npm ci"]
