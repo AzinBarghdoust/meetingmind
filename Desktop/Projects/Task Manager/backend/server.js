@@ -85,12 +85,21 @@ app.post('/api/auth/register', async (req, res) => {
 
   try {
     const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(emailLower);
-    if (existing) return res.status(409).json({ error: 'An account with this email already exists' });
+    if (existing) return res.status(409).json({ error: 'An account with this email already exists.' });
 
     const hash = await bcrypt.hash(password, 12);
-    const result = db.prepare(
-      'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)'
-    ).run(name.trim(), emailLower, hash);
+    let result;
+    try {
+      result = db.prepare(
+        'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)'
+      ).run(name.trim(), emailLower, hash);
+    } catch (dbErr) {
+      // SQLite UNIQUE constraint fires if two requests slip through simultaneously
+      if (dbErr.message?.includes('UNIQUE constraint failed')) {
+        return res.status(409).json({ error: 'An account with this email already exists.' });
+      }
+      throw dbErr;
+    }
 
     const user = { id: result.lastInsertRowid, name: name.trim(), email: emailLower };
     const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
