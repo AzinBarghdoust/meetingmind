@@ -54,7 +54,11 @@ function AuthScreen({ onAuth }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch {
+        throw new Error(`Server error: ${res.status} — is VITE_API_URL set correctly in Vercel?`);
+      }
       if (!res.ok) throw new Error(data.error || 'Authentication failed');
       onAuth(data.token, data.user);
     } catch (err) {
