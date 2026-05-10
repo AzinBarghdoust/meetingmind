@@ -30,6 +30,9 @@ const upload = multer({
 
 // ── Database ──────────────────────────────────────────────────────────────────
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'meetingmind.db');
+const DB_DIR = path.dirname(DB_PATH);
+if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+console.log(`[DB] Using database at: ${DB_PATH}`);
 const db = new Database(DB_PATH);
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
