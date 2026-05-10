@@ -89,6 +89,9 @@ app.post('/api/auth/register', async (req, res) => {
     const user = { id: result.lastInsertRowid, name: name.trim(), email: emailLower };
     const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
 
+    const ts = new Date().toISOString();
+    console.log(`[${ts}] 🆕 NEW USER  id=${user.id}  name="${user.name}"  email=${user.email}`);
+
     res.status(201).json({ token, user });
   } catch (err) {
     console.error('[register]', err.message);
