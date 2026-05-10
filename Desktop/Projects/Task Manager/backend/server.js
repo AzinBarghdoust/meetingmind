@@ -15,7 +15,7 @@ const app = express();
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:4173',
-  process.env.FRONTEND_URL, // set this to your Vercel URL in Railway env vars
+  process.env.FRONTEND_URL?.replace(/\/$/, ''),
 ].filter(Boolean);
 
 app.use(cors({ origin: ALLOWED_ORIGINS }));
