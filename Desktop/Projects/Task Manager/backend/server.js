@@ -12,7 +12,13 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:4173'] }));
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  process.env.FRONTEND_URL, // set this to your Vercel URL in Railway env vars
+].filter(Boolean);
+
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json({ limit: '10mb' }));
 
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');

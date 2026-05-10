@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
+// In dev: empty string → Vite proxy handles /api/* → localhost:3001
+// In prod: set VITE_API_URL to your Railway backend URL in Vercel env vars
+const API = import.meta.env.VITE_API_URL ?? '';
+
 const STEP_LABELS = ['Setup', 'Record', 'Processing', 'Review & Send'];
 
 const LANGUAGES = [
@@ -43,7 +47,7 @@ function AuthScreen({ onAuth }) {
     setError('');
     setLoading(true);
     try {
-      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+      const endpoint = mode === 'login' ? `${API}/api/auth/login` : `${API}/api/auth/register`;
       const body = mode === 'login' ? { email, password } : { name, email, password };
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -437,7 +441,7 @@ function ProcessingStep({ audioBlob, meetingTitle, meetingDate, attendees, langu
       form.append('mimeType', audioBlob.type);
       form.append('language_code', language || 'en');
 
-      const tRes = await fetch('/api/transcribe', {
+      const tRes = await fetch(`${API}/api/transcribe', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: form,
@@ -451,7 +455,7 @@ function ProcessingStep({ audioBlob, meetingTitle, meetingDate, attendees, langu
       setStatus('transcribe', 'done');
 
       setStatus('generate', 'active');
-      const mRes = await fetch('/api/generate-mom', {
+      const mRes = await fetch(`${API}/api/generate-mom', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -540,7 +544,7 @@ function ReviewStep({ transcript, mom: initMom, tasks: initTasks, attendees, mee
     setEmailSending(true);
     setEmailError('');
     try {
-      const res = await fetch('/api/send-email', {
+      const res = await fetch(`${API}/api/send-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -692,7 +696,7 @@ export default function App() {
 
   const fetchUsage = useCallback(async (t) => {
     try {
-      const res = await fetch('/api/usage', { headers: { Authorization: `Bearer ${t}` } });
+      const res = await fetch(`${API}/api/usage', { headers: { Authorization: `Bearer ${t}` } });
       if (res.ok) setUsage(await res.json());
     } catch { /* ignore */ }
   }, []);
