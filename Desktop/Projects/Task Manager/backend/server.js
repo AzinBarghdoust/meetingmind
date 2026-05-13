@@ -401,6 +401,28 @@ app.get('/api/usage', requireAuth, (req, res) => {
   res.json({ used, limit, remaining: Math.max(0, limit - used) });
 });
 
+// ── GET /api/admin/stats — protected by ADMIN_SECRET env var ─────────────────
+app.get('/api/admin/stats', (req, res) => {
+  const secret = req.headers['x-admin-secret'];
+  if (!secret || secret !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const users = db.prepare(`
+    SELECT id, name, email, created_at,
+      (SELECT COUNT(*) FROM meetings WHERE user_id = users.id) as mom_count
+    FROM users
+    ORDER BY created_at DESC
+  `).all();
+
+  const totalUsers    = users.length;
+  const totalMeetings = db.prepare('SELECT COUNT(*) as c FROM meetings').get().c;
+  const today         = new Date().toISOString().slice(0, 10);
+  const todaySignups  = users.filter(u => u.created_at?.startsWith(today)).length;
+
+  res.json({ totalUsers, totalMeetings, todaySignups, users });
+});
+
 // ── Health ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({ ok: true }));
 
