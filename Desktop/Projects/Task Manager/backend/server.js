@@ -403,7 +403,7 @@ app.get('/api/usage', requireAuth, (req, res) => {
 
 // ── GET /api/admin/stats — protected by ADMIN_SECRET env var ─────────────────
 app.get('/api/admin/stats', (req, res) => {
-  const secret = req.headers['x-admin-secret'];
+  const secret = req.headers['x-admin-secret'] || req.query.secret;
   if (!secret || secret !== process.env.ADMIN_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
